@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# production builds
+build/
+dist/
+.out/
+.next/
+.cache/
+
+# logs
+logs/
+*.log
+*.log.*
+
+# environment files
+.env
+.env.*
+!.env.example
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# coverage / test outputs
+coverage/
+jest-html-reporters-*.html
+.junit/
+
+# miscs
+*.tgz
+*.zip

@@ -1,0 +1,45 @@
+.blog-form-container {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.blog-form-container h1 {
+  color: #2c3e50;
+  margin-bottom: 30px;
+}
+
+.blog-form-container .form-group {
+  margin-bottom: 25px;
+}
+
+.blog-form-container .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.blog-form-container .form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.blog-form-container .form-group input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.ck-editor__editable {
+  min-height: 400px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
