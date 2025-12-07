@@ -6,6 +6,10 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import './BlogForm.css';
 
+// Read final URLs directly from env
+const BLOG_CREATE_URL = process.env.REACT_APP_BLOG_CREATE_URL;
+const UPLOAD_URL = process.env.REACT_APP_BLOG_UPLOAD_URL;
+
 const BlogCreate = () => {
   const [formData, setFormData] = useState({
     title: '',
@@ -38,7 +42,10 @@ const BlogCreate = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      const tagsArray = formData.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag);
 
       let thumbnailUrl = formData.thumbnail;
 
@@ -47,7 +54,7 @@ const BlogCreate = () => {
         const thumbnailFormData = new FormData();
         thumbnailFormData.append('image', thumbnailFile);
 
-        const uploadRes = await axios.post('http://localhost:5000/api/blogs/upload-image', thumbnailFormData, {
+        const uploadRes = await axios.post(UPLOAD_URL, thumbnailFormData, {
           headers: {
             'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${token}`
@@ -57,17 +64,29 @@ const BlogCreate = () => {
         thumbnailUrl = uploadRes.data.url;
       }
 
-      await axios.post('http://localhost:5000/api/blogs', {
-        ...formData,
-        thumbnail: thumbnailUrl,
-        tags: tagsArray
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Use configurable blog create URL
+      await axios.post(
+        BLOG_CREATE_URL,
+        {
+          ...formData,
+          thumbnail: thumbnailUrl,
+          tags: tagsArray
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
 
       navigate('/blogs');
     } catch (err) {
-      setError(err.response?.data?.error || 'Error creating blog');
+      // extra logging to see real backend error
+      console.error('Blog create error:', {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+        url: BLOG_CREATE_URL
+      });
+      setError(err.response?.data?.error || err.response?.data?.message || 'Error creating blog');
     }
   };
 
@@ -80,16 +99,18 @@ const BlogCreate = () => {
             formData.append('image', file);
 
             const token = localStorage.getItem('token');
-            axios.post('http://localhost:5000/api/blogs/upload-image', formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${token}`
-              }
-            })
-            .then(res => {
-              resolve({ default: `http://localhost:5000${res.data.url}` });
-            })
-            .catch(err => reject(err));
+            axios
+              .post(UPLOAD_URL, formData, {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                  Authorization: `Bearer ${token}`
+                }
+              })
+              .then(res => {
+                const url = res.data.url;
+                resolve({ default: url });
+              })
+              .catch(err => reject(err));
           });
         });
       }
