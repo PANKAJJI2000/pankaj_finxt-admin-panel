@@ -38,6 +38,24 @@
   min-height: 400px;
 }
 
+/* Quill editor styling */
+.ql-container {
+  min-height: 200px;
+  font-size: 16px;
+}
+
+.ql-editor {
+  min-height: 200px;
+}
+
+.form-group .ql-toolbar {
+  border-radius: 4px 4px 0 0;
+}
+
+.form-group .ql-container {
+  border-radius: 0 0 4px 4px;
+}
+
 .form-actions {
   display: flex;
   gap: 15px;

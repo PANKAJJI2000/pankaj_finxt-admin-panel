@@ -1,10 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import './BlogForm.css';
+
+// Read URLs from env
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+
+// Quill toolbar configuration
+const quillModules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['link', 'image'],
+    ['blockquote', 'code-block'],
+    ['clean']
+  ]
+};
+
+const quillFormats = [
+  'header', 'bold', 'italic', 'underline', 'strike',
+  'list', 'bullet', 'link', 'image', 'blockquote', 'code-block'
+];
 
 const BlogEdit = () => {
   const { id } = useParams();
@@ -24,16 +44,17 @@ const BlogEdit = () => {
   useEffect(() => {
     const fetchBlog = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/blogs/${id}`);
-        // Fix: Extract blog from response.data.blog
+        const response = await axios.get(`${API_BASE_URL}/blogs/${id}`);
         const blog = response.data.blog;
-        setFormData({
-          title: blog.title,
-          slug: blog.slug,
-          content: blog.content,
-          thumbnail: blog.thumbnail || '',
-          tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : ''
-        });
+        if (blog) {
+          setFormData({
+            title: blog.title || '',
+            slug: blog.slug || '',
+            content: blog.content || '',
+            thumbnail: blog.thumbnail || '',
+            tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : ''
+          });
+        }
         setLoading(false);
       } catch (error) {
         console.error('Error loading blog:', error);
@@ -57,6 +78,10 @@ const BlogEdit = () => {
     }
   };
 
+  const handleContentChange = (value) => {
+    setFormData({ ...formData, content: value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -67,12 +92,13 @@ const BlogEdit = () => {
 
       let thumbnailUrl = formData.thumbnail;
 
-      // Upload new thumbnail if file is selected
+      // Thumbnail upload disabled (no backend route)
+      /*
       if (thumbnailFile) {
         const thumbnailFormData = new FormData();
         thumbnailFormData.append('image', thumbnailFile);
 
-        const uploadRes = await axios.post('http://localhost:5000/api/blogs/upload-image', thumbnailFormData, {
+        const uploadRes = await axios.post(`${API_BASE_URL}/blogs/upload-image`, thumbnailFormData, {
           headers: {
             'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${token}`
@@ -81,8 +107,9 @@ const BlogEdit = () => {
 
         thumbnailUrl = uploadRes.data.url;
       }
+      */
 
-      await axios.put(`http://localhost:5000/api/blogs/${id}`, {
+      await axios.put(`${API_BASE_URL}/blogs/${id}`, {
         ...formData,
         thumbnail: thumbnailUrl,
         tags: tagsArray
@@ -93,40 +120,9 @@ const BlogEdit = () => {
       navigate('/blogs');
     } catch (err) {
       console.error('Update error:', err);
-      setError(err.response?.data?.message || 'Error updating blog');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Error updating blog');
     }
   };
-
-  const uploadAdapter = (loader) => {
-    return {
-      upload: () => {
-        return new Promise((resolve, reject) => {
-          loader.file.then(file => {
-            const formData = new FormData();
-            formData.append('image', file);
-
-            const token = localStorage.getItem('token');
-            axios.post('http://localhost:5000/api/blogs/upload-image', formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${token}`
-              }
-            })
-            .then(res => {
-              resolve({ default: `http://localhost:5000${res.data.url}` });
-            })
-            .catch(err => reject(err));
-          });
-        });
-      }
-    };
-  };
-
-  function uploadPlugin(editor) {
-    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
-      return uploadAdapter(loader);
-    };
-  }
 
   if (loading) return <Layout><div>Loading...</div></Layout>;
 
@@ -163,6 +159,23 @@ const BlogEdit = () => {
             />
           </div>
           <div className="form-group">
+            <label>Or Upload New Thumbnail</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleThumbnailChange}
+            />
+            {(thumbnailPreview || formData.thumbnail) && (
+              <div style={{ marginTop: '10px' }}>
+                <img 
+                  src={thumbnailPreview || formData.thumbnail} 
+                  alt="Thumbnail preview" 
+                  style={{ maxWidth: '300px', maxHeight: '200px', borderRadius: '4px' }}
+                />
+              </div>
+            )}
+          </div>
+          <div className="form-group">
             <label>Tags (comma separated)</label>
             <input
               type="text"
@@ -173,35 +186,14 @@ const BlogEdit = () => {
           </div>
           <div className="form-group">
             <label>Content *</label>
-            <CKEditor
-              editor={ClassicEditor}
-              config={{
-                extraPlugins: [uploadPlugin],
-                toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'imageUpload', 'blockQuote', 'undo', 'redo']
-              }}
-              data={formData.content}
-              onChange={(event, editor) => {
-                const data = editor.getData();
-                setFormData({ ...formData, content: data });
-              }}
+            <ReactQuill
+              theme="snow"
+              value={formData.content}
+              onChange={handleContentChange}
+              modules={quillModules}
+              formats={quillFormats}
+              style={{ height: '300px', marginBottom: '50px' }}
             />
-          </div>
-          <div className="form-group">
-            <label>Thumbnail Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleThumbnailChange}
-            />
-            {(thumbnailPreview || formData.thumbnail) && (
-              <div style={{ marginTop: '10px' }}>
-                <img 
-                  src={thumbnailPreview || `http://localhost:5000${formData.thumbnail}`} 
-                  alt="Thumbnail preview" 
-                  style={{ maxWidth: '300px', maxHeight: '200px', borderRadius: '4px' }}
-                />
-              </div>
-            )}
           </div>
           <div className="form-actions">
             <button type="submit" className="btn-primary">Update Blog</button>

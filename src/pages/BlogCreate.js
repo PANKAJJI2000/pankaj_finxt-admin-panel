@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import './BlogForm.css';
@@ -9,6 +9,23 @@ import './BlogForm.css';
 // Read final URLs directly from env
 const BLOG_CREATE_URL = process.env.REACT_APP_BLOG_CREATE_URL;
 const UPLOAD_URL = process.env.REACT_APP_BLOG_UPLOAD_URL;
+
+// Quill toolbar configuration
+const quillModules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    ['link', 'image'],
+    ['blockquote', 'code-block'],
+    ['clean']
+  ]
+};
+
+const quillFormats = [
+  'header', 'bold', 'italic', 'underline', 'strike',
+  'list', 'bullet', 'link', 'image', 'blockquote', 'code-block'
+];
 
 const BlogCreate = () => {
   const [formData, setFormData] = useState({
@@ -36,9 +53,22 @@ const BlogCreate = () => {
     }
   };
 
+  const handleContentChange = (value) => {
+    setFormData({ ...formData, content: value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // 1) Validate that BLOG_CREATE_URL is configured
+    if (!BLOG_CREATE_URL) {
+      setError('BLOG_CREATE_URL is not set in .env. Please configure your backend blog create URL.');
+      console.error('Missing BLOG_CREATE_URL env variable');
+      return;
+    }
+
+    console.log('Creating blog via URL:', BLOG_CREATE_URL);
 
     try {
       const token = localStorage.getItem('token');
@@ -49,8 +79,9 @@ const BlogCreate = () => {
 
       let thumbnailUrl = formData.thumbnail;
 
-      // Upload thumbnail if file is selected
-      if (thumbnailFile) {
+      // 2) Thumbnail upload disabled because backend route does not exist
+      /*
+      if (thumbnailFile && UPLOAD_URL) {
         const thumbnailFormData = new FormData();
         thumbnailFormData.append('image', thumbnailFile);
 
@@ -63,8 +94,9 @@ const BlogCreate = () => {
 
         thumbnailUrl = uploadRes.data.url;
       }
+      */
 
-      // Use configurable blog create URL
+      // 3) Call backend create-blog endpoint
       await axios.post(
         BLOG_CREATE_URL,
         {
@@ -79,49 +111,25 @@ const BlogCreate = () => {
 
       navigate('/blogs');
     } catch (err) {
-      // extra logging to see real backend error
       console.error('Blog create error:', {
         message: err.message,
         status: err.response?.status,
         data: err.response?.data,
         url: BLOG_CREATE_URL
       });
+
+      // If backend returns 404, show a specific hint
+      if (err.response?.status === 404) {
+        setError(
+          `404 Not Found: The URL "${BLOG_CREATE_URL}" does not exist on the backend. ` +
+          'Check your backend route and REACT_APP_BLOG_CREATE_URL in .env.'
+        );
+        return;
+      }
+
       setError(err.response?.data?.error || err.response?.data?.message || 'Error creating blog');
     }
   };
-
-  const uploadAdapter = (loader) => {
-    return {
-      upload: () => {
-        return new Promise((resolve, reject) => {
-          loader.file.then(file => {
-            const formData = new FormData();
-            formData.append('image', file);
-
-            const token = localStorage.getItem('token');
-            axios
-              .post(UPLOAD_URL, formData, {
-                headers: {
-                  'Content-Type': 'multipart/form-data',
-                  Authorization: `Bearer ${token}`
-                }
-              })
-              .then(res => {
-                const url = res.data.url;
-                resolve({ default: url });
-              })
-              .catch(err => reject(err));
-          });
-        });
-      }
-    };
-  };
-
-  function uploadPlugin(editor) {
-    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
-      return uploadAdapter(loader);
-    };
-  }
 
   return (
     <Layout>
@@ -139,7 +147,7 @@ const BlogCreate = () => {
             />
           </div>
           <div className="form-group">
-            <label>Slug *</label>
+            <label>Slug</label>
             <input
               type="text"
               value={formData.slug}
@@ -175,17 +183,13 @@ const BlogCreate = () => {
           </div>
           <div className="form-group">
             <label>Content *</label>
-            <CKEditor
-              editor={ClassicEditor}
-              config={{
-                extraPlugins: [uploadPlugin],
-                toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'imageUpload', 'blockQuote', 'undo', 'redo']
-              }}
-              data={formData.content}
-              onChange={(event, editor) => {
-                const data = editor.getData();
-                setFormData({ ...formData, content: data });
-              }}
+            <ReactQuill
+              theme="snow"
+              value={formData.content}
+              onChange={handleContentChange}
+              modules={quillModules}
+              formats={quillFormats}
+              style={{ height: '300px', marginBottom: '50px' }}
             />
           </div>
           <div className="form-actions">
