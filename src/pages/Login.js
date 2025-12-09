@@ -16,20 +16,71 @@ const Login = () => {
     setSuccess('');
     setLoading(true);
 
+    // List of possible endpoints to try
+    const endpoints = [
+      'http://localhost:5000/api/auth/reset-admin',
+      'http://localhost:5000/api/auth/create-admin',
+      'http://localhost:5000/api/admin/create',
+      'http://localhost:5000/api/auth/register'
+    ];
+
     try {
       console.log('Creating admin user...');
-      const response = await axios.post('http://localhost:5000/api/auth/reset-admin');
+      
+      let response = null;
+      let lastError = null;
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          response = await axios.post(endpoint, {
+            email: 'admin@finxt.com',
+            password: 'admin123',
+            name: 'Admin',
+            role: 'admin'
+          });
+          console.log(`Success with endpoint: ${endpoint}`);
+          break;
+        } catch (err) {
+          console.log(`Failed with endpoint ${endpoint}:`, err.response?.status);
+          lastError = err;
+          if (err.response?.status !== 404) {
+            // If it's not a 404, this endpoint exists but had another error
+            throw err;
+          }
+        }
+      }
+
+      if (!response) {
+        throw new Error(
+          'No admin creation endpoint found on backend. Please create the endpoint manually or seed the database. ' +
+          'Last error: ' + (lastError?.response?.data?.message || lastError?.message || 'Unknown error')
+        );
+      }
       
       console.log('Admin creation response:', response.data);
       
-      if (response.data.success) {
-        setSuccess(`Admin created! Email: ${response.data.credentials.email}, Password: ${response.data.credentials.password}`);
-        setEmail(response.data.credentials.email);
-        setPassword(response.data.credentials.password);
+      if (response.data.success || response.data.token || response.data.admin) {
+        const credentials = response.data.credentials || { email: 'admin@finxt.com', password: 'admin123' };
+        setSuccess(`Admin created! Email: ${credentials.email}, Password: ${credentials.password}`);
+        setEmail(credentials.email);
+        setPassword(credentials.password);
+      } else {
+        setSuccess('Admin may have been created. Try logging in with: admin@finxt.com / admin123');
+        setEmail('admin@finxt.com');
+        setPassword('admin123');
       }
     } catch (err) {
       console.error('Create admin error:', err);
-      setError('Failed to create admin: ' + (err.response?.data?.message || err.message));
+      const errorMsg = err.response?.data?.message || err.message;
+      
+      if (errorMsg.includes('404') || errorMsg.includes('No admin creation endpoint')) {
+        setError(
+          'Backend endpoint not found. You need to create an admin user directly in your database or add a /api/auth/reset-admin endpoint to your backend server.'
+        );
+      } else {
+        setError('Failed to create admin: ' + errorMsg);
+      }
     } finally {
       setLoading(false);
     }
