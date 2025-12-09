@@ -88,7 +88,7 @@ const Login = () => {
 
   const handleCheckAdmin = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/auth/check-admin');
+      const response = await axios.get('https://pankaj-finxt-backend.onrender.com/api/auth/check-admin');
       console.log('Admins in database:', response.data);
       alert(`Total admins: ${response.data.count}\nAdmins: ${JSON.stringify(response.data.admins, null, 2)}`);
     } catch (err) {
@@ -106,7 +106,7 @@ const Login = () => {
     console.log('Attempting login with:', { email, password });
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post('https://pankaj-finxt-backend.onrender.com/api/auth/login', {
         email,
         password
       }, {
