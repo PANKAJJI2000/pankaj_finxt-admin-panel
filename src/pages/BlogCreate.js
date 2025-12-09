@@ -6,9 +6,10 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import './BlogForm.css';
 
-// Read final URLs directly from env
-const BLOG_CREATE_URL = process.env.REACT_APP_BLOG_CREATE_URL;
-const UPLOAD_URL = process.env.REACT_APP_BLOG_UPLOAD_URL;
+// Read final URLs directly from env with fallback
+const API_BASE = process.env.REACT_APP_API_URL || 'https://pankaj-finxt-backend.onrender.com/api';
+const BLOG_CREATE_URL = process.env.REACT_APP_BLOG_CREATE_URL || `${API_BASE}/blogs`;
+const UPLOAD_URL = process.env.REACT_APP_BLOG_UPLOAD_URL || `${API_BASE}/upload`;
 
 // Quill toolbar configuration
 const quillModules = {
