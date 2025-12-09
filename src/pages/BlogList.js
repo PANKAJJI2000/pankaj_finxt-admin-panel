@@ -4,6 +4,8 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import './BlogList.css';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'https://pankaj-finxt-backend.onrender.com/api';
+
 const BlogList = () => {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,12 +16,12 @@ const BlogList = () => {
 
   const fetchBlogs = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/blogs');
-      // Fix: Extract blogs array from response data
+      console.log('Fetching blogs from:', `${API_BASE}/blogs`);
+      const response = await axios.get(`${API_BASE}/blogs`);
       setBlogs(response.data.blogs || []);
     } catch (error) {
       console.error('Error fetching blogs:', error);
-      setBlogs([]); // Set empty array on error
+      setBlogs([]);
     } finally {
       setLoading(false);
     }
@@ -30,25 +32,46 @@ const BlogList = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/blogs/${id}`, {
+      console.log('Deleting blog:', `${API_BASE}/blogs/${id}`);
+      await axios.delete(`${API_BASE}/blogs/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchBlogs();
     } catch (error) {
-      alert('Error deleting blog');
+      console.error('Delete error:', error);
+      alert('Error deleting blog: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handlePublish = async (id, currentStatus) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/blogs/${id}/publish`, 
-        { published: !currentStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const url = `${API_BASE}/blogs/${id}`;
+      console.log('Updating publish status:', url, 'to:', !currentStatus);
+      
+      try {
+        // Try PATCH first
+        await axios.patch(url, 
+          { published: !currentStatus },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (patchError) {
+        // Fallback to PUT if PATCH fails
+        if (patchError.response?.status === 404) {
+          console.log('PATCH failed, trying PUT...');
+          await axios.put(url, 
+            { published: !currentStatus },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        } else {
+          throw patchError;
+        }
+      }
+      
       fetchBlogs();
     } catch (error) {
-      alert('Error updating publish status');
+      console.error('Publish error:', error);
+      alert('Error updating publish status: ' + (error.response?.data?.message || error.message));
     }
   };
 
